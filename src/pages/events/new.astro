@@ -1,0 +1,255 @@
+---
+export const prerender = false;
+
+import SiteLayout from '../../layouts/Layout.astro';
+
+const today = new Date();
+const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+---
+
+<SiteLayout>
+  <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="max-w-3xl mx-auto px-4 py-10 md:px-6">
+
+      <!-- Back link -->
+      <a href="/calendar" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-8 group">
+        <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to calendar
+      </a>
+
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 4v16m8-8H4" />
+            </svg>
+            New Event
+          </span>
+        </div>
+        <h1 class="text-4xl font-bold tracking-tight text-white">Create an Event</h1>
+        <p class="mt-2 text-sm text-gray-500">Fill in the event details and optional markdown content below.</p>
+      </div>
+
+      <!-- Alert area -->
+      <div id="alert" class="hidden mb-6 rounded-xl border px-5 py-4 text-sm font-medium"></div>
+
+      <!-- Form card -->
+      <form id="event-form" class="rounded-2xl border border-gray-800 bg-gray-900/50 overflow-hidden shadow-xl">
+        <!-- Accent bar -->
+        <div class="h-1 w-full bg-indigo-500"></div>
+
+        <div class="p-6 md:p-8 space-y-6">
+
+          <!-- Title -->
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-300 mb-1.5">
+              Title <span class="text-red-400">*</span>
+            </label>
+            <input
+              id="title"
+              name="title"
+              type="text"
+              required
+              placeholder="e.g. Sprint Planning — Sprint 43"
+              class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+            />
+          </div>
+
+          <!-- Date / Start / End -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label for="date" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Date <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                required
+                value={defaultDate}
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors scheme-dark"
+              />
+            </div>
+            <div>
+              <label for="startTime" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Start time <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="startTime"
+                name="startTime"
+                type="time"
+                required
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors scheme-dark"
+              />
+            </div>
+            <div>
+              <label for="endTime" class="block text-sm font-medium text-gray-300 mb-1.5">
+                End time <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="endTime"
+                name="endTime"
+                type="time"
+                required
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors scheme-dark"
+              />
+            </div>
+          </div>
+
+          <!-- Location + Category -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="location" class="block text-sm font-medium text-gray-300 mb-1.5">Location</label>
+              <input
+                id="location"
+                name="location"
+                type="text"
+                placeholder="e.g. Conference Room A / Zoom"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+              />
+            </div>
+            <div>
+              <label for="category" class="block text-sm font-medium text-gray-300 mb-1.5">Category</label>
+              <select
+                id="category"
+                name="category"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+              >
+                <option value="">— None —</option>
+                <option value="meeting">Meeting</option>
+                <option value="workshop">Workshop</option>
+                <option value="social">Social</option>
+                <option value="deadline">Deadline</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-300 mb-1.5">
+              Short description
+              <span class="ml-1.5 text-gray-600 font-normal text-xs">shown in calendar cards</span>
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              rows="3"
+              placeholder="Brief one-or-two sentence summary of the event…"
+              class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-y"
+            ></textarea>
+          </div>
+
+          <!-- Divider -->
+          <div class="border-t border-gray-800"></div>
+
+          <!-- Markdown body -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="body" class="block text-sm font-medium text-gray-300">
+                Event details
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">markdown supported</span>
+              </label>
+              <span class="text-xs text-gray-600 font-mono">*.md</span>
+            </div>
+            <textarea
+              id="body"
+              name="body"
+              rows="16"
+              placeholder={"## Agenda\n\n- 09:00 — Welcome & intros\n- 09:15 — Topic one\n- 10:00 — Q&A\n\n## Notes\n\nAdd any pre-read links, context, or follow-up actions here."}
+              class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-y font-mono text-sm leading-relaxed"
+            ></textarea>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center justify-between pt-2">
+            <a
+              href="/calendar"
+              class="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Cancel
+            </a>
+            <button
+              id="submit-btn"
+              type="submit"
+              class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg id="submit-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 13l4 4L19 7" />
+              </svg>
+              <svg id="spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span id="submit-label">Create Event</span>
+            </button>
+          </div>
+
+        </div>
+      </form>
+
+    </div>
+  </div>
+</SiteLayout>
+
+<script>
+  const form = document.getElementById('event-form') as HTMLFormElement;
+  const alert = document.getElementById('alert') as HTMLDivElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const submitLabel = document.getElementById('submit-label') as HTMLSpanElement;
+  const submitIcon = document.getElementById('submit-icon') as unknown as SVGElement;
+  const spinner = document.getElementById('spinner') as unknown as SVGElement;
+
+  function showAlert(message: string, type: 'error' | 'success') {
+    alert.textContent = message;
+    alert.className = type === 'error'
+      ? 'mb-6 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 px-5 py-4 text-sm font-medium'
+      : 'mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 px-5 py-4 text-sm font-medium';
+    alert.classList.remove('hidden');
+    alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function setLoading(loading: boolean) {
+    submitBtn.disabled = loading;
+    submitLabel.textContent = loading ? 'Creating…' : 'Create Event';
+    submitIcon.classList.toggle('hidden', loading);
+    spinner.classList.toggle('hidden', !loading);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alert.classList.add('hidden');
+    setLoading(true);
+
+    try {
+      const formData = new FormData(form);
+      const res = await fetch('/api/create-event', { method: 'POST', body: formData });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        showAlert(json.error ?? 'Something went wrong. Please try again.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      showAlert(`Event created! Redirecting to calendar…`, 'success');
+      form.reset();
+
+      // Redirect to calendar for the event's date
+      const dateVal = (document.getElementById('date') as HTMLInputElement).value
+        || formData.get('date') as string;
+      setTimeout(() => {
+        window.location.href = dateVal
+          ? `/calendar?date=${dateVal}`
+          : '/calendar';
+      }, 1200);
+    } catch {
+      showAlert('Network error. Check that the dev server is running and try again.', 'error');
+      setLoading(false);
+    }
+  });
+</script>

@@ -1,0 +1,205 @@
+---
+export const prerender = false;
+
+import SiteLayout from '../layouts/Layout.astro';
+import WeekPicker from '../components/WeekPicker.astro';
+import { getCollection } from 'astro:content';
+
+const allEvents = await getCollection('events');
+
+function getWorkWeek(date: Date): Date[] {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return Array.from({ length: 5 }, (_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return dd;
+  });
+}
+
+const toLocalISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const today = new Date();
+
+const dateParam = Astro.url.searchParams.get('date');
+const anchorDate = dateParam ? new Date(dateParam + 'T00:00:00') : new Date();
+
+const workWeek = getWorkWeek(anchorDate);
+const weekStart = workWeek[0];
+const weekEnd = new Date(workWeek[4]);
+weekEnd.setHours(23, 59, 59, 999);
+
+const toDateKey = (d: Date) => toLocalISO(d);
+
+const weekEvents = allEvents.filter(e => {
+  const ed = new Date(e.data.date);
+  ed.setHours(0, 0, 0, 0);
+  return ed >= weekStart && ed <= weekEnd;
+});
+
+const eventsByDay = workWeek.map(day => ({
+  day,
+  events: weekEvents
+    .filter(e => toDateKey(new Date(e.data.date)) === toDateKey(day))
+    .sort((a, b) => a.data.startTime.localeCompare(b.data.startTime)),
+}));
+
+const isToday = (d: Date) =>
+  toDateKey(d) === toDateKey(today);
+
+const weekLabel = `${workWeek[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} – ${workWeek[4].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+
+const categoryStyle: Record<string, { badge: string; dot: string; border: string }> = {
+  meeting:  { badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',   dot: 'bg-blue-400',   border: 'border-l-blue-500' },
+  workshop: { badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', dot: 'bg-emerald-400', border: 'border-l-emerald-500' },
+  social:   { badge: 'bg-violet-500/20 text-violet-300 border-violet-500/40', dot: 'bg-violet-400', border: 'border-l-violet-500' },
+  deadline: { badge: 'bg-red-500/20 text-red-300 border-red-500/40',     dot: 'bg-red-400',    border: 'border-l-red-500' },
+};
+const defaultStyle = { badge: 'bg-gray-500/20 text-gray-300 border-gray-500/40', dot: 'bg-gray-400', border: 'border-l-gray-600' };
+---
+
+<SiteLayout>
+  <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="max-w-3xl mx-auto px-4 py-10 md:px-6">
+
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Work Week
+          </span>
+          <a
+            href="/events/new"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New event
+          </a>
+        </div>
+        <h1 class="text-4xl font-bold tracking-tight text-white">{weekLabel}</h1>
+        <p class="mt-2 text-sm text-gray-500">
+          {weekEvents.length} event{weekEvents.length !== 1 ? 's' : ''} scheduled
+        </p>
+      </div>
+
+      <!-- Week picker -->
+      <WeekPicker anchorDate={toLocalISO(anchorDate)} />
+
+      <!-- Legend -->
+      <div class="flex flex-wrap gap-3 mb-8">
+        {Object.entries(categoryStyle).map(([cat, s]) => (
+          <span class={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium capitalize ${s.badge}`}>
+            <span class={`w-1.5 h-1.5 rounded-full ${s.dot}`}></span>
+            {cat}
+          </span>
+        ))}
+      </div>
+
+      <!-- Agenda -->
+      <div class="space-y-4">
+        {eventsByDay.map(({ day, events }) => {
+          const today_ = isToday(day);
+          return (
+            <div class={`rounded-2xl border overflow-hidden transition-all ${today_ ? 'border-indigo-500/40 shadow-lg shadow-indigo-950/50' : 'border-gray-800'}`}>
+
+              <!-- Day header -->
+              <div class={`flex items-center gap-4 px-5 py-3 ${today_ ? 'bg-indigo-950/60' : 'bg-gray-900/60'} ${events.length > 0 ? 'border-b border-gray-800/60' : ''}`}>
+                <div class={`flex flex-col items-center justify-center w-11 h-11 rounded-xl text-sm font-bold leading-none shrink-0 ${today_ ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' : 'bg-gray-800 text-gray-400'}`}>
+                  <span class="text-[9px] font-semibold uppercase tracking-wide opacity-80">
+                    {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                  </span>
+                  <span class="text-lg mt-0.5">{day.getDate()}</span>
+                </div>
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <span class={`font-semibold text-sm ${today_ ? 'text-indigo-200' : 'text-gray-300'}`}>
+                    {day.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  </span>
+                  {today_ && (
+                    <span class="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full">
+                      Today
+                    </span>
+                  )}
+                </div>
+                {events.length === 0 && (
+                  <span class="text-xs text-gray-700 ml-auto">No events</span>
+                )}
+                {events.length > 0 && (
+                  <span class="text-xs text-gray-600 ml-auto tabular-nums">
+                    {events.length} event{events.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              <!-- Events list -->
+              {events.length > 0 && (
+                <ul class={`divide-y divide-gray-800/40 ${today_ ? 'bg-indigo-950/10' : 'bg-gray-900/20'}`}>
+                  {events.map(event => {
+                    const cat = event.data.category ?? '';
+                    const style = categoryStyle[cat] ?? defaultStyle;
+                    return (
+                      <li class={`flex gap-4 px-5 py-4 border-l-2 ${style.border} hover:bg-white/2 transition-colors`}>
+                        <!-- Time column -->
+                        <div class="flex flex-col items-end shrink-0 w-16 pt-0.5 tabular-nums">
+                          <span class="text-sm font-semibold text-gray-200">{event.data.startTime}</span>
+                          <span class="text-xs text-gray-600 mt-0.5">{event.data.endTime}</span>
+                        </div>
+                        <!-- Timeline dot -->
+                        <div class="flex flex-col items-center shrink-0">
+                          <div class={`w-2 h-2 rounded-full mt-1.5 ring-2 ring-gray-950 ${style.dot}`}></div>
+                          <div class="w-px flex-1 bg-gray-800 mt-1.5"></div>
+                        </div>
+                        <!-- Event body -->
+                        <div class="flex-1 min-w-0 pb-1">
+                          <div class="flex items-start gap-2 flex-wrap">
+                            <a href={`/events/${event.id.split('/').pop()}`} class="group/title">
+                              <h3 class="font-semibold text-white leading-snug group-hover/title:text-indigo-300 transition-colors">
+                                {event.data.title}
+                                <svg class="inline-block w-3 h-3 ml-1 opacity-0 group-hover/title:opacity-60 -translate-y-px transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </h3>
+                            </a>
+                            {event.data.category && (
+                              <span class={`mt-0.5 text-[11px] px-2 py-0.5 rounded-full border font-semibold capitalize shrink-0 ${style.badge}`}>
+                                {event.data.category}
+                              </span>
+                            )}
+                          </div>
+                          {event.data.location && (
+                            <div class="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
+                              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              {event.data.location}
+                            </div>
+                          )}
+                          {event.data.description && (
+                            <p class="mt-2 text-sm text-gray-400 leading-relaxed">{event.data.description}</p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+    </div>
+  </div>
+</SiteLayout>
