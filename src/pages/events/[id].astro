@@ -1,16 +1,16 @@
 ---
+export const prerender = false;
+
 import SiteLayout from '../../layouts/Layout.astro';
 import { getCollection, render } from 'astro:content';
 
-export async function getStaticPaths() {
-  const events = await getCollection('events');
-  return events.map(event => ({
-    params: { id: event.id.split('/').pop() },
-    props: { event },
-  }));
+const slug = Astro.params.id as string;
+const events = await getCollection('events');
+const event = events.find(e => e.id.split('/').pop() === slug);
+if (!event) {
+  return Astro.redirect('/calendar');
 }
 
-const { event } = Astro.props;
 const { Content, headings } = await render(event);
 
 const categoryStyle: Record<string, { badge: string; dot: string; accent: string; glow: string }> = {
@@ -29,7 +29,23 @@ const formattedDate = eventDate.toLocaleDateString('en-US', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
 });
 
+const d = event.data.date;
+const isoDate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+const rawBody = event.body ?? '';
+
 const hasBody = headings.length > 0;
+
+const editData = {
+  id: event.id,
+  title: event.data.title,
+  date: isoDate,
+  startTime: event.data.startTime,
+  endTime: event.data.endTime,
+  location: event.data.location ?? '',
+  category: event.data.category ?? '',
+  description: event.data.description ?? '',
+  body: rawBody,
+};
 ---
 
 <SiteLayout>
@@ -45,17 +61,29 @@ const hasBody = headings.length > 0;
           Back to calendar
         </a>
 
-        <button
-          id="delete-btn"
-          data-event-id={event.id}
-          class="inline-flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Delete event
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            id="edit-btn"
+            class="inline-flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/10 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </button>
+          <button
+            id="delete-btn"
+            data-event-id={event.id}
+            class="inline-flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        </div>
       </div>
 
       <!-- Delete confirmation dialog -->
@@ -132,6 +160,9 @@ const hasBody = headings.length > 0;
           }
         });
       </script>
+
+      <!-- ═══ VIEW ═══ -->
+      <div id="view-content">
 
       <!-- Event header card -->
       <div class={`rounded-2xl border border-gray-800 bg-gray-900/50 overflow-hidden mb-10 shadow-xl ${style.glow}`}>
@@ -230,6 +261,269 @@ const hasBody = headings.length > 0;
           <Content />
         </div>
       )}
+
+      </div><!-- /#view-content -->
+
+      <!-- ═══ EDIT FORM ═══ -->
+      <div id="edit-form-container" class="hidden">
+
+        <div id="edit-alert" class="hidden mb-6 rounded-xl border px-5 py-4 text-sm font-medium"></div>
+
+        <form id="edit-form" class="rounded-2xl border border-gray-800 bg-gray-900/50 overflow-hidden shadow-xl">
+          <!-- Amber accent bar signals edit mode -->
+          <div class="h-1 w-full bg-amber-500"></div>
+
+          <div class="p-6 md:p-8 space-y-6">
+
+            <!-- Edit mode header -->
+            <div class="flex items-center gap-2 mb-1">
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editing Event
+              </span>
+            </div>
+
+            <!-- Title -->
+            <div>
+              <label for="edit-title" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Title <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="edit-title"
+                name="title"
+                type="text"
+                required
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+              />
+            </div>
+
+            <!-- Date / Start / End -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label for="edit-date" class="block text-sm font-medium text-gray-300 mb-1.5">
+                  Date <span class="text-red-400">*</span>
+                </label>
+                <input
+                  id="edit-date"
+                  name="date"
+                  type="date"
+                  required
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors scheme-dark"
+                />
+              </div>
+              <div>
+                <label for="edit-startTime" class="block text-sm font-medium text-gray-300 mb-1.5">
+                  Start time <span class="text-red-400">*</span>
+                </label>
+                <input
+                  id="edit-startTime"
+                  name="startTime"
+                  type="time"
+                  required
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors scheme-dark"
+                />
+              </div>
+              <div>
+                <label for="edit-endTime" class="block text-sm font-medium text-gray-300 mb-1.5">
+                  End time <span class="text-red-400">*</span>
+                </label>
+                <input
+                  id="edit-endTime"
+                  name="endTime"
+                  type="time"
+                  required
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors scheme-dark"
+                />
+              </div>
+            </div>
+
+            <!-- Location + Category -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="edit-location" class="block text-sm font-medium text-gray-300 mb-1.5">Location</label>
+                <input
+                  id="edit-location"
+                  name="location"
+                  type="text"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label for="edit-category" class="block text-sm font-medium text-gray-300 mb-1.5">Category</label>
+                <select
+                  id="edit-category"
+                  name="category"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                >
+                  <option value="">— None —</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="workshop">Workshop</option>
+                  <option value="social">Social</option>
+                  <option value="deadline">Deadline</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label for="edit-description" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Short description
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">shown in calendar cards</span>
+              </label>
+              <textarea
+                id="edit-description"
+                name="description"
+                rows="3"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-y"
+              ></textarea>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-gray-800"></div>
+
+            <!-- Markdown body -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label for="edit-body" class="block text-sm font-medium text-gray-300">
+                  Event details
+                  <span class="ml-1.5 text-gray-600 font-normal text-xs">markdown supported</span>
+                </label>
+                <span class="text-xs text-gray-600 font-mono">*.md</span>
+              </div>
+              <textarea
+                id="edit-body"
+                name="body"
+                rows="16"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-y font-mono text-sm leading-relaxed"
+              ></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                id="cancel-edit"
+                class="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                id="save-btn"
+                type="submit"
+                class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg id="save-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg id="save-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Save Changes
+              </button>
+            </div>
+
+          </div>
+        </form>
+      </div>
+
+      <script define:vars={{ editData }}>
+        const editBtn = document.getElementById('edit-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        const editFormContainer = document.getElementById('edit-form-container');
+        const viewContent = document.getElementById('view-content');
+        const editForm = document.getElementById('edit-form');
+        const editAlert = document.getElementById('edit-alert');
+        const saveBtn = document.getElementById('save-btn');
+        const saveIcon = document.getElementById('save-icon');
+        const saveSpinner = document.getElementById('save-spinner');
+
+        function populateForm() {
+          document.getElementById('edit-title').value = editData.title ?? '';
+          document.getElementById('edit-date').value = editData.date ?? '';
+          document.getElementById('edit-startTime').value = editData.startTime ?? '';
+          document.getElementById('edit-endTime').value = editData.endTime ?? '';
+          document.getElementById('edit-location').value = editData.location ?? '';
+          document.getElementById('edit-category').value = editData.category ?? '';
+          document.getElementById('edit-description').value = editData.description ?? '';
+          document.getElementById('edit-body').value = editData.body ?? '';
+        }
+
+        function showAlert(message, type) {
+          editAlert.textContent = message;
+          editAlert.className = type === 'error'
+            ? 'mb-6 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 px-5 py-4 text-sm font-medium'
+            : 'mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 px-5 py-4 text-sm font-medium';
+          editAlert.classList.remove('hidden');
+        }
+
+        function setLoading(loading) {
+          saveBtn.disabled = loading;
+          saveIcon.classList.toggle('hidden', loading);
+          saveSpinner.classList.toggle('hidden', !loading);
+        }
+
+        function enterEditMode() {
+          populateForm();
+          viewContent.classList.add('hidden');
+          editFormContainer.classList.remove('hidden');
+          editBtn.classList.add('hidden');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function exitEditMode() {
+          editFormContainer.classList.add('hidden');
+          viewContent.classList.remove('hidden');
+          editBtn.classList.remove('hidden');
+          editAlert.classList.add('hidden');
+        }
+
+        editBtn.addEventListener('click', enterEditMode);
+        cancelEditBtn.addEventListener('click', exitEditMode);
+
+        editForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          editAlert.classList.add('hidden');
+          setLoading(true);
+
+          const payload = {
+            id: editData.id,
+            title: document.getElementById('edit-title').value.trim(),
+            date: document.getElementById('edit-date').value.trim(),
+            startTime: document.getElementById('edit-startTime').value.trim(),
+            endTime: document.getElementById('edit-endTime').value.trim(),
+            location: document.getElementById('edit-location').value.trim(),
+            category: document.getElementById('edit-category').value,
+            description: document.getElementById('edit-description').value.trim(),
+            body: document.getElementById('edit-body').value.trim(),
+          };
+
+          try {
+            const res = await fetch('/api/update-event', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+              showAlert(json.error ?? 'Something went wrong. Please try again.', 'error');
+              setLoading(false);
+              return;
+            }
+
+            showAlert('Changes saved! Reloading…', 'success');
+            setTimeout(() => window.location.reload(), 800);
+          } catch {
+            showAlert('Network error. Please try again.', 'error');
+            setLoading(false);
+          }
+        });
+      </script>
 
     </div>
   </div>
