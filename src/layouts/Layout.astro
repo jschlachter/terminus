@@ -1,14 +1,42 @@
 ---
 import "../styles/global.css";
+
+const currentPath = Astro.url.pathname;
+const isCalendar = currentPath === '/' || currentPath.startsWith('/events') || currentPath === '/calendar';
+const isIssues = currentPath.startsWith('/issues');
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Terminus</title>
 </head>
 <body>
-  <slot />  
+  <nav class="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/90 backdrop-blur-sm">
+    <div class="max-w-3xl mx-auto px-4 md:px-6 flex items-center gap-1 h-12">
+      <a
+        href="/"
+        class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isCalendar ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'}`}
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        Calendar
+      </a>
+      <a
+        href="/issues"
+        class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isIssues ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'}`}
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+        Issues
+      </a>
+    </div>
+  </nav>
+  <slot />
 </body>
 </html>

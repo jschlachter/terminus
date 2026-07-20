@@ -1,0 +1,1016 @@
+---
+export const prerender = false;
+
+import SiteLayout from '../../layouts/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+const slug = Astro.params.id as string;
+const issues = await getCollection('issues');
+const issue = issues.find(i => i.id.split('/').pop() === slug);
+if (!issue) {
+  return Astro.redirect('/issues');
+}
+
+const { Content, headings } = await render(issue);
+
+const statusStyle: Record<string, { badge: string; dot: string; accent: string; accentBar: string }> = {
+  'open':        { badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',     dot: 'bg-blue-400',    accent: 'text-blue-400',    accentBar: 'bg-blue-500' },
+  'in-progress': { badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',   dot: 'bg-amber-400',   accent: 'text-amber-400',   accentBar: 'bg-amber-500' },
+  'resolved':    { badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', dot: 'bg-emerald-400', accent: 'text-emerald-400', accentBar: 'bg-emerald-500' },
+  'closed':      { badge: 'bg-gray-500/20 text-gray-400 border-gray-600/40',      dot: 'bg-gray-500',    accent: 'text-gray-400',    accentBar: 'bg-gray-600' },
+};
+
+const priorityStyle: Record<string, { badge: string }> = {
+  'low':      { badge: 'bg-gray-500/20 text-gray-400 border-gray-600/40' },
+  'medium':   { badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
+  'high':     { badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
+  'critical': { badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
+};
+
+const categoryLabel: Record<string, string> = {
+  'it-problem':       'IT Problem',
+  'app-problem':      'App Problem',
+  'feature-request':  'Feature Request',
+  'doc-request':      'Doc Request',
+  'other':            'Other',
+};
+
+const categoryStyle: Record<string, string> = {
+  'it-problem':       'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+  'app-problem':      'bg-violet-500/20 text-violet-300 border-violet-500/40',
+  'feature-request':  'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+  'doc-request':      'bg-teal-500/20 text-teal-300 border-teal-500/40',
+  'other':            'bg-gray-500/20 text-gray-400 border-gray-600/40',
+};
+
+const defaultStatusStyle = { badge: 'bg-gray-500/20 text-gray-400 border-gray-600/40', dot: 'bg-gray-500', accent: 'text-gray-400', accentBar: 'bg-gray-600' };
+
+const ss = statusStyle[issue.data.status] ?? defaultStatusStyle;
+
+const submittedDate = new Date(issue.data.date);
+const formattedDate = submittedDate.toLocaleDateString('en-US', {
+  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+});
+
+const d = issue.data.date;
+const isoDate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+const today = new Date();
+const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+const rawBody = issue.body ?? '';
+const hasBody = headings.length > 0;
+
+// Resolution display helpers
+const resolutionTypeLabel: Record<string, string> = {
+  'fixed':       'Fixed',
+  'wont-fix':    "Won't Fix",
+  'duplicate':   'Duplicate',
+  'workaround':  'Workaround',
+  'by-design':   'By Design',
+};
+const resolutionTypeStyle: Record<string, string> = {
+  'fixed':       'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+  'wont-fix':    'bg-gray-500/20 text-gray-400 border-gray-600/40',
+  'duplicate':   'bg-violet-500/20 text-violet-300 border-violet-500/40',
+  'workaround':  'bg-amber-500/20 text-amber-300 border-amber-500/40',
+  'by-design':   'bg-blue-500/20 text-blue-300 border-blue-500/40',
+};
+
+const hasResolution = !!(issue.data.resolvedDate || issue.data.resolvedBy || issue.data.resolutionType);
+
+let formattedResolvedDate = '';
+let daysToResolve: number | null = null;
+if (issue.data.resolvedDate) {
+  const rd = new Date(issue.data.resolvedDate + 'T00:00:00');
+  formattedResolvedDate = rd.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const submitted = issue.data.date;
+  daysToResolve = Math.round((rd.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+const editData = {
+  id: issue.id,
+  title: issue.data.title,
+  date: isoDate,
+  status: issue.data.status,
+  priority: issue.data.priority ?? '',
+  category: issue.data.category ?? '',
+  reporter: issue.data.reporter ?? '',
+  assignee: issue.data.assignee ?? '',
+  dueDate: issue.data.dueDate ?? '',
+  tags: (issue.data.tags ?? []).join(', '),
+  description: issue.data.description ?? '',
+  body: rawBody,
+  resolvedDate: issue.data.resolvedDate ?? '',
+  resolvedBy: issue.data.resolvedBy ?? '',
+  resolutionType: issue.data.resolutionType ?? '',
+};
+---
+
+<SiteLayout>
+  <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="max-w-3xl mx-auto px-4 py-10 md:px-6">
+
+      <!-- Top bar -->
+      <div class="flex items-center justify-between mb-8">
+        <a href="/issues" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors group">
+          <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to issues
+        </a>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="edit-btn"
+            class="inline-flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/10 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </button>
+          {(issue.data.status === 'open' || issue.data.status === 'in-progress') && (
+            <button
+              id="resolve-btn"
+              class="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Resolve
+            </button>
+          )}
+          <button
+            id="delete-btn"
+            data-issue-id={issue.id}
+            class="inline-flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <!-- Delete confirmation dialog -->
+      <dialog
+        id="delete-dialog"
+        class="rounded-2xl border border-gray-700 bg-gray-900 text-gray-100 p-0 shadow-2xl backdrop:bg-black/60 max-w-sm w-full mx-auto"
+      >
+        <div class="p-6">
+          <h2 class="text-lg font-semibold text-white mb-2">Delete issue?</h2>
+          <p class="text-sm text-gray-400 mb-6">
+            <span class="font-medium text-gray-200">{issue.data.title}</span> will be permanently deleted. This action cannot be undone.
+          </p>
+          <div class="flex justify-end gap-3">
+            <button
+              id="cancel-delete"
+              class="px-4 py-2 text-sm rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              id="confirm-delete"
+              class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </dialog>
+
+      <!-- Resolve dialog -->
+      <dialog
+        id="resolve-dialog"
+        class="rounded-2xl border border-gray-700 bg-gray-900 text-gray-100 p-0 shadow-2xl backdrop:bg-black/60 max-w-lg w-full mx-auto"
+      >
+        <div class="h-1 w-full bg-emerald-500 rounded-t-2xl"></div>
+        <div class="p-6">
+          <div class="flex items-center gap-2 mb-5">
+            <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 class="text-lg font-semibold text-white">Resolve issue</h2>
+          </div>
+
+          <form id="resolve-form" class="space-y-4">
+            <!-- Date resolved + Resolved by -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="resolve-date" class="block text-sm font-medium text-gray-300 mb-1.5">
+                  Date resolved <span class="text-red-400">*</span>
+                </label>
+                <input
+                  id="resolve-date"
+                  name="resolvedDate"
+                  type="date"
+                  required
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors scheme-dark"
+                />
+              </div>
+              <div>
+                <label for="resolve-by" class="block text-sm font-medium text-gray-300 mb-1.5">Resolved by</label>
+                <input
+                  id="resolve-by"
+                  name="resolvedBy"
+                  type="text"
+                  placeholder="Name or team…"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
+
+            <!-- Resolution type -->
+            <div>
+              <label for="resolve-type" class="block text-sm font-medium text-gray-300 mb-1.5">Resolution type</label>
+              <select
+                id="resolve-type"
+                name="resolutionType"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+              >
+                <option value="">— Select type —</option>
+                <option value="fixed">Fixed</option>
+                <option value="wont-fix">Won't Fix</option>
+                <option value="duplicate">Duplicate</option>
+                <option value="workaround">Workaround</option>
+                <option value="by-design">By Design</option>
+              </select>
+            </div>
+
+            <!-- Resolution text -->
+            <div>
+              <label for="resolve-text" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Resolution
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">what was done — markdown supported</span>
+              </label>
+              <textarea
+                id="resolve-text"
+                name="resolution"
+                rows="4"
+                placeholder="Describe how the issue was resolved…"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors resize-y font-mono text-sm"
+              ></textarea>
+            </div>
+
+            <!-- Notes -->
+            <div>
+              <label for="resolve-notes" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Notes
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">optional</span>
+              </label>
+              <textarea
+                id="resolve-notes"
+                name="notes"
+                rows="3"
+                placeholder="Any follow-up actions, references, or context…"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors resize-y text-sm"
+              ></textarea>
+            </div>
+
+            <div id="resolve-alert" class="hidden rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 px-4 py-3 text-sm font-medium"></div>
+
+            <div class="flex justify-end gap-3 pt-1">
+              <button
+                type="button"
+                id="cancel-resolve"
+                class="px-4 py-2 text-sm rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-resolve"
+                type="submit"
+                class="inline-flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg id="resolve-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg id="resolve-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Mark as Resolved
+              </button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <script>
+        const deleteBtn = document.getElementById('delete-btn') as HTMLButtonElement | null;
+        const dialog = document.getElementById('delete-dialog') as HTMLDialogElement | null;
+        const cancelBtn = document.getElementById('cancel-delete') as HTMLButtonElement | null;
+        const confirmBtn = document.getElementById('confirm-delete') as HTMLButtonElement | null;
+
+        deleteBtn?.addEventListener('click', () => { dialog?.showModal(); });
+        cancelBtn?.addEventListener('click', () => { dialog?.close(); });
+        dialog?.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+
+        confirmBtn?.addEventListener('click', async () => {
+          const issueId = deleteBtn?.dataset.issueId ?? '';
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = 'Deleting…';
+
+          try {
+            const res = await fetch('/api/delete-issue', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: issueId }),
+            });
+
+            if (res.ok) {
+              window.location.href = '/issues';
+            } else {
+              const data = await res.json() as { error?: string };
+              alert(data.error ?? 'Failed to delete issue.');
+              confirmBtn.disabled = false;
+              confirmBtn.textContent = 'Delete';
+              dialog?.close();
+            }
+          } catch {
+            alert('Network error. Please try again.');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Delete';
+            dialog?.close();
+          }
+        });
+      </script>
+
+      <!-- ═══ VIEW ═══ -->
+      <div id="view-content">
+
+        <!-- Issue header card -->
+        <div class="rounded-2xl border border-gray-800 bg-gray-900/50 overflow-hidden mb-10 shadow-xl">
+          <!-- Status accent bar -->
+          <div class={`h-1 w-full ${ss.accentBar}`}></div>
+
+          <div class="p-6 md:p-8">
+            <!-- Badge row -->
+            <div class="flex flex-wrap items-center gap-1.5 mb-4">
+              <span class={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-semibold capitalize ${ss.badge}`}>
+                <span class={`w-1.5 h-1.5 rounded-full ${ss.dot}`}></span>
+                {issue.data.status}
+              </span>
+              {issue.data.priority && (
+                <span class={`inline-flex items-center text-xs px-2.5 py-1 rounded-full border font-semibold capitalize ${priorityStyle[issue.data.priority]?.badge ?? 'bg-gray-500/20 text-gray-400 border-gray-600/40'}`}>
+                  {issue.data.priority} priority
+                </span>
+              )}
+              {issue.data.category && (
+                <span class={`inline-flex items-center text-xs px-2.5 py-1 rounded-full border font-semibold ${categoryStyle[issue.data.category] ?? 'bg-gray-500/20 text-gray-400 border-gray-600/40'}`}>
+                  {categoryLabel[issue.data.category] ?? issue.data.category}
+                </span>
+              )}
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight mb-6">
+              {issue.data.title}
+            </h1>
+
+            <!-- Meta grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Submitted date -->
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg class={`w-4 h-4 ${ss.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Submitted</div>
+                  <div class="text-sm text-gray-200">{formattedDate}</div>
+                </div>
+              </div>
+
+              <!-- Due date -->
+              {issue.data.dueDate && (
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg class={`w-4 h-4 ${ss.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Due</div>
+                    <div class="text-sm text-gray-200">{issue.data.dueDate}</div>
+                  </div>
+                </div>
+              )}
+
+              <!-- Reporter -->
+              {issue.data.reporter && (
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg class={`w-4 h-4 ${ss.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Reporter</div>
+                    <div class="text-sm text-gray-200">{issue.data.reporter}</div>
+                  </div>
+                </div>
+              )}
+
+              <!-- Assignee -->
+              {issue.data.assignee && (
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg class={`w-4 h-4 ${ss.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Assignee</div>
+                    <div class="text-sm text-gray-200">{issue.data.assignee}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <!-- Tags -->
+            {issue.data.tags && issue.data.tags.length > 0 && (
+              <div class="mt-4 pt-4 border-t border-gray-800 flex flex-wrap gap-1.5">
+                {issue.data.tags.map(tag => (
+                  <span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-xs font-mono">{tag}</span>
+                ))}
+              </div>
+            )}
+
+            <!-- Short description -->
+            {issue.data.description && (
+              <p class="mt-4 pt-4 border-t border-gray-800 text-gray-400 leading-relaxed">
+                {issue.data.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <!-- Body content (rendered markdown) -->
+        {hasResolution && (
+          <div class="rounded-2xl border border-emerald-800/50 bg-emerald-950/20 overflow-hidden mb-10 shadow-xl">
+            <div class="h-1 w-full bg-emerald-500"></div>
+            <div class="p-6 md:p-8">
+              <div class="flex items-center gap-2 mb-4">
+                <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 class="text-sm font-semibold uppercase tracking-widest text-emerald-400">Resolution</h2>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {issue.data.resolvedDate && (
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Resolved</div>
+                      <div class="text-sm text-gray-200">{formattedResolvedDate}</div>
+                      {daysToResolve !== null && (
+                        <div class="text-xs text-emerald-500 mt-0.5">
+                          {daysToResolve === 0 ? 'Same day' : daysToResolve === 1 ? '1 day to resolve' : `${daysToResolve} days to resolve`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {issue.data.resolvedBy && (
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Resolved by</div>
+                      <div class="text-sm text-gray-200">{issue.data.resolvedBy}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {issue.data.resolutionType && (
+                <div class="mt-4 pt-4 border-t border-emerald-800/40">
+                  <span class={`inline-flex items-center text-xs px-2.5 py-1 rounded-full border font-semibold ${resolutionTypeStyle[issue.data.resolutionType] ?? 'bg-gray-500/20 text-gray-400 border-gray-600/40'}`}>
+                    {resolutionTypeLabel[issue.data.resolutionType] ?? issue.data.resolutionType}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {hasBody && (
+          <div class="prose prose-invert prose-gray max-w-none
+            prose-headings:font-bold prose-headings:tracking-tight
+            prose-h2:text-xl prose-h2:text-white prose-h2:mt-10 prose-h2:mb-4
+            prose-h3:text-base prose-h3:text-gray-200 prose-h3:mt-6 prose-h3:mb-2
+            prose-p:text-gray-400 prose-p:leading-relaxed
+            prose-li:text-gray-400
+            prose-strong:text-gray-200 prose-strong:font-semibold
+            prose-table:text-sm
+            prose-th:text-gray-300 prose-th:font-semibold prose-th:text-left
+            prose-td:text-gray-400
+            prose-a:text-rose-400 prose-a:no-underline hover:prose-a:underline
+            prose-hr:border-gray-800
+            prose-code:text-emerald-300 prose-code:bg-gray-800/60 prose-code:rounded prose-code:px-1">
+            <Content />
+          </div>
+        )}
+
+      </div><!-- /#view-content -->
+
+      <!-- ═══ EDIT FORM ═══ -->
+      <div id="edit-form-container" class="hidden">
+
+        <div id="edit-alert" class="hidden mb-6 rounded-xl border px-5 py-4 text-sm font-medium"></div>
+
+        <form id="edit-form" class="rounded-2xl border border-gray-800 bg-gray-900/50 overflow-hidden shadow-xl">
+          <!-- Amber accent bar signals edit mode -->
+          <div class="h-1 w-full bg-amber-500"></div>
+
+          <div class="p-6 md:p-8 space-y-6">
+
+            <!-- Edit mode header -->
+            <div class="flex items-center gap-2 mb-1">
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editing Issue
+              </span>
+            </div>
+
+            <!-- Title -->
+            <div>
+              <label for="edit-title" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Title <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="edit-title"
+                name="title"
+                type="text"
+                required
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+              />
+            </div>
+
+            <!-- Date + Status -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="edit-date" class="block text-sm font-medium text-gray-300 mb-1.5">
+                  Date submitted <span class="text-red-400">*</span>
+                </label>
+                <input
+                  id="edit-date"
+                  name="date"
+                  type="date"
+                  required
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors scheme-dark"
+                />
+              </div>
+              <div>
+                <label for="edit-status" class="block text-sm font-medium text-gray-300 mb-1.5">
+                  Status <span class="text-red-400">*</span>
+                </label>
+                <select
+                  id="edit-status"
+                  name="status"
+                  required
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                >
+                  <option value="open">Open</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Priority + Category -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="edit-priority" class="block text-sm font-medium text-gray-300 mb-1.5">Priority</label>
+                <select
+                  id="edit-priority"
+                  name="priority"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                >
+                  <option value="">— None —</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <div>
+                <label for="edit-category" class="block text-sm font-medium text-gray-300 mb-1.5">Category</label>
+                <select
+                  id="edit-category"
+                  name="category"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                >
+                  <option value="">— None —</option>
+                  <option value="it-problem">IT Problem</option>
+                  <option value="app-problem">App Problem</option>
+                  <option value="feature-request">Feature Request</option>
+                  <option value="doc-request">Doc Request</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Reporter + Assignee -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="edit-reporter" class="block text-sm font-medium text-gray-300 mb-1.5">Reporter</label>
+                <input
+                  id="edit-reporter"
+                  name="reporter"
+                  type="text"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label for="edit-assignee" class="block text-sm font-medium text-gray-300 mb-1.5">Assignee</label>
+                <input
+                  id="edit-assignee"
+                  name="assignee"
+                  type="text"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
+
+            <!-- Due date + Tags -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="edit-dueDate" class="block text-sm font-medium text-gray-300 mb-1.5">Due date</label>
+                <input
+                  id="edit-dueDate"
+                  name="dueDate"
+                  type="date"
+                  class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors scheme-dark"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">
+                  Tags
+                  <span class="ml-1.5 text-gray-600 font-normal text-xs">comma or Enter to add</span>
+                </label>
+                <div
+                  id="edit-tags-container"
+                  class="flex flex-wrap items-center gap-1.5 min-h-10.5 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-transparent transition-colors cursor-text"
+                >
+                  <input
+                    id="edit-tags-text"
+                    type="text"
+                    placeholder="Add a tag…"
+                    autocomplete="off"
+                    class="flex-1 min-w-25 bg-transparent outline-none text-gray-100 placeholder-gray-600 text-sm py-0.5"
+                  />
+                </div>
+                <input type="hidden" id="edit-tags" name="tags" />
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label for="edit-description" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Short description
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">shown in the issue list</span>
+              </label>
+              <textarea
+                id="edit-description"
+                name="description"
+                rows="3"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-y"
+              ></textarea>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-gray-800"></div>
+
+            <!-- Markdown body -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label for="edit-body" class="block text-sm font-medium text-gray-300">
+                  Issue details
+                  <span class="ml-1.5 text-gray-600 font-normal text-xs">markdown supported</span>
+                </label>
+                <span class="text-xs text-gray-600 font-mono">*.md</span>
+              </div>
+              <textarea
+                id="edit-body"
+                name="body"
+                rows="16"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-y font-mono text-sm leading-relaxed"
+              ></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                id="cancel-edit"
+                class="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                id="save-btn"
+                type="submit"
+                class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg id="save-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg id="save-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Save Changes
+              </button>
+            </div>
+
+            <!-- Hidden resolution fields — preserved on regular edit -->
+            <input type="hidden" id="edit-resolvedDate" name="resolvedDate" />
+            <input type="hidden" id="edit-resolvedBy" name="resolvedBy" />
+            <input type="hidden" id="edit-resolutionType" name="resolutionType" />
+
+          </div>
+        </form>
+      </div><!-- /#edit-form-container -->
+
+      <script define:vars={{ editData, todayIso }}>
+        const editBtn = document.getElementById('edit-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        const editFormContainer = document.getElementById('edit-form-container');
+        const viewContent = document.getElementById('view-content');
+        const editForm = document.getElementById('edit-form');
+        const editAlert = document.getElementById('edit-alert');
+        const saveBtn = document.getElementById('save-btn');
+        const saveIcon = document.getElementById('save-icon');
+        const saveSpinner = document.getElementById('save-spinner');
+
+        // Edit tag pill input
+        const editTagContainer = document.getElementById('edit-tags-container');
+        const editTagTextInput = document.getElementById('edit-tags-text');
+        const editTagHiddenInput = document.getElementById('edit-tags');
+        let editTags = [];
+
+        function renderEditTagPills() {
+          editTagContainer.querySelectorAll('.tag-pill').forEach(p => p.remove());
+          editTags.forEach((tag, i) => {
+            const pill = document.createElement('span');
+            pill.className = 'tag-pill inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-xs font-medium';
+            pill.appendChild(document.createTextNode(tag));
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ml-0.5 leading-none text-amber-300/60 hover:text-amber-200';
+            btn.textContent = '×';
+            btn.setAttribute('aria-label', `Remove ${tag}`);
+            btn.addEventListener('click', () => { editTags.splice(i, 1); renderEditTagPills(); syncEditTagHidden(); });
+            pill.appendChild(btn);
+            editTagContainer.insertBefore(pill, editTagTextInput);
+          });
+          editTagTextInput.placeholder = editTags.length === 0 ? 'Add a tag…' : '';
+        }
+
+        function syncEditTagHidden() {
+          editTagHiddenInput.value = editTags.join(', ');
+        }
+
+        function editSetTags(initial) {
+          editTags = initial.filter(Boolean);
+          renderEditTagPills();
+          syncEditTagHidden();
+        }
+
+        function addEditTag(value) {
+          const trimmed = value.replace(/,+$/, '').trim();
+          if (trimmed && !editTags.includes(trimmed)) { editTags.push(trimmed); renderEditTagPills(); syncEditTagHidden(); }
+          editTagTextInput.value = '';
+        }
+
+        editTagContainer.addEventListener('click', () => editTagTextInput.focus());
+
+        editTagTextInput.addEventListener('keydown', (e) => {
+          if (e.key === ',' || e.key === 'Enter') { e.preventDefault(); addEditTag(editTagTextInput.value); }
+          else if (e.key === 'Backspace' && editTagTextInput.value === '' && editTags.length > 0) {
+            editTags.pop(); renderEditTagPills(); syncEditTagHidden();
+          }
+        });
+
+        editTagTextInput.addEventListener('blur', () => { if (editTagTextInput.value.trim()) addEditTag(editTagTextInput.value); });
+
+        editTagTextInput.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pasted = e.clipboardData.getData('text');
+          pasted.split(',').map(s => s.trim()).filter(Boolean).forEach(p => { if (!editTags.includes(p)) editTags.push(p); });
+          renderEditTagPills(); syncEditTagHidden(); editTagTextInput.value = '';
+        });
+
+        function populateForm() {
+          document.getElementById('edit-title').value = editData.title ?? '';
+          document.getElementById('edit-date').value = editData.date ?? '';
+          document.getElementById('edit-status').value = editData.status ?? 'open';
+          document.getElementById('edit-priority').value = editData.priority ?? '';
+          document.getElementById('edit-category').value = editData.category ?? '';
+          document.getElementById('edit-reporter').value = editData.reporter ?? '';
+          document.getElementById('edit-assignee').value = editData.assignee ?? '';
+          document.getElementById('edit-dueDate').value = editData.dueDate ?? '';
+          editSetTags((editData.tags ?? '').split(',').map(s => s.trim()).filter(Boolean));
+          document.getElementById('edit-description').value = editData.description ?? '';
+          document.getElementById('edit-body').value = editData.body ?? '';
+          document.getElementById('edit-resolvedDate').value = editData.resolvedDate ?? '';
+          document.getElementById('edit-resolvedBy').value = editData.resolvedBy ?? '';
+          document.getElementById('edit-resolutionType').value = editData.resolutionType ?? '';
+        }
+
+        function showAlert(message, type) {
+          editAlert.textContent = message;
+          editAlert.className = type === 'error'
+            ? 'mb-6 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 px-5 py-4 text-sm font-medium'
+            : 'mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 px-5 py-4 text-sm font-medium';
+          editAlert.classList.remove('hidden');
+        }
+
+        function setLoading(loading) {
+          saveBtn.disabled = loading;
+          saveIcon.classList.toggle('hidden', loading);
+          saveSpinner.classList.toggle('hidden', !loading);
+        }
+
+        function enterEditMode() {
+          populateForm();
+          viewContent.classList.add('hidden');
+          editFormContainer.classList.remove('hidden');
+          editBtn.classList.add('hidden');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function exitEditMode() {
+          editFormContainer.classList.add('hidden');
+          viewContent.classList.remove('hidden');
+          editBtn.classList.remove('hidden');
+          editAlert.classList.add('hidden');
+        }
+
+        editBtn.addEventListener('click', enterEditMode);
+        cancelEditBtn.addEventListener('click', exitEditMode);
+
+        editForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          editAlert.classList.add('hidden');
+          setLoading(true);
+
+          const payload = {
+            id: editData.id,
+            title: document.getElementById('edit-title').value.trim(),
+            date: document.getElementById('edit-date').value.trim(),
+            status: document.getElementById('edit-status').value,
+            priority: document.getElementById('edit-priority').value,
+            category: document.getElementById('edit-category').value,
+            reporter: document.getElementById('edit-reporter').value.trim(),
+            assignee: document.getElementById('edit-assignee').value.trim(),
+            dueDate: document.getElementById('edit-dueDate').value.trim(),
+            tags: document.getElementById('edit-tags').value.trim(),
+            description: document.getElementById('edit-description').value.trim(),
+            body: document.getElementById('edit-body').value.trim(),
+            resolvedDate: document.getElementById('edit-resolvedDate').value.trim(),
+            resolvedBy: document.getElementById('edit-resolvedBy').value.trim(),
+            resolutionType: document.getElementById('edit-resolutionType').value.trim(),
+          };
+
+          try {
+            const res = await fetch('/api/update-issue', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+              showAlert(json.error ?? 'Something went wrong. Please try again.', 'error');
+              setLoading(false);
+              return;
+            }
+
+            showAlert('Changes saved! Reloading…', 'success');
+            setTimeout(() => window.location.reload(), 800);
+          } catch {
+            showAlert('Network error. Please try again.', 'error');
+            setLoading(false);
+          }
+        });
+      </script>
+
+      <script define:vars={{ editData, todayIso }}>
+        // ── Resolve dialog ──────────────────────────────────────────────────
+        const resolveBtn = document.getElementById('resolve-btn');
+        const resolveDialog = document.getElementById('resolve-dialog');
+        const cancelResolveBtn = document.getElementById('cancel-resolve');
+        const resolveForm = document.getElementById('resolve-form');
+        const resolveAlert = document.getElementById('resolve-alert');
+        const confirmResolveBtn = document.getElementById('confirm-resolve');
+        const resolveIcon = document.getElementById('resolve-icon');
+        const resolveSpinner = document.getElementById('resolve-spinner');
+
+        if (resolveBtn && resolveDialog) {
+          resolveBtn.addEventListener('click', () => {
+            // Pre-fill defaults each time the dialog opens
+            document.getElementById('resolve-date').value = todayIso;
+            document.getElementById('resolve-by').value = editData.assignee ?? '';
+            document.getElementById('resolve-type').value = '';
+            document.getElementById('resolve-text').value = '';
+            document.getElementById('resolve-notes').value = '';
+            resolveAlert.classList.add('hidden');
+            resolveDialog.showModal();
+          });
+
+          cancelResolveBtn?.addEventListener('click', () => resolveDialog.close());
+          resolveDialog.addEventListener('click', (e) => { if (e.target === resolveDialog) resolveDialog.close(); });
+
+          resolveForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            resolveAlert.classList.add('hidden');
+            confirmResolveBtn.disabled = true;
+            resolveIcon.classList.add('hidden');
+            resolveSpinner.classList.remove('hidden');
+
+            const resolvedDate = document.getElementById('resolve-date').value.trim();
+            const resolvedBy = document.getElementById('resolve-by').value.trim();
+            const resolutionType = document.getElementById('resolve-type').value.trim();
+            const resolutionText = document.getElementById('resolve-text').value.trim();
+            const notesText = document.getElementById('resolve-notes').value.trim();
+
+            // Build markdown append
+            let bodyAppend = '';
+            if (resolutionText) bodyAppend += `\n\n## Resolution\n\n${resolutionText}`;
+            if (notesText) bodyAppend += `\n\n## Notes\n\n${notesText}`;
+            const updatedBody = (editData.body ?? '').trimEnd() + bodyAppend;
+
+            const payload = {
+              id: editData.id,
+              title: editData.title,
+              date: editData.date,
+              status: 'resolved',
+              priority: editData.priority,
+              category: editData.category,
+              reporter: editData.reporter,
+              assignee: editData.assignee,
+              dueDate: editData.dueDate,
+              tags: editData.tags,
+              description: editData.description,
+              body: updatedBody,
+              resolvedDate,
+              resolvedBy,
+              resolutionType,
+            };
+
+            try {
+              const res = await fetch('/api/update-issue', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+              const json = await res.json();
+
+              if (!res.ok || !json.success) {
+                resolveAlert.textContent = json.error ?? 'Something went wrong. Please try again.';
+                resolveAlert.classList.remove('hidden');
+                confirmResolveBtn.disabled = false;
+                resolveIcon.classList.remove('hidden');
+                resolveSpinner.classList.add('hidden');
+                return;
+              }
+
+              resolveDialog.close();
+              window.location.reload();
+            } catch {
+              resolveAlert.textContent = 'Network error. Please try again.';
+              resolveAlert.classList.remove('hidden');
+              confirmResolveBtn.disabled = false;
+              resolveIcon.classList.remove('hidden');
+              resolveSpinner.classList.add('hidden');
+            }
+          });
+        }
+      </script>
+
+    </div>
+  </div>
+</SiteLayout>

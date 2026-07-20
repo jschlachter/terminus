@@ -1,0 +1,171 @@
+---
+export const prerender = false;
+
+import SiteLayout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const allIssues = await getCollection('issues');
+
+// Sort newest first by submitted date
+const issues = allIssues.sort((a, b) =>
+  new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+const statusStyle: Record<string, { badge: string; dot: string }> = {
+  'open':        { badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',     dot: 'bg-blue-400' },
+  'in-progress': { badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',   dot: 'bg-amber-400' },
+  'resolved':    { badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', dot: 'bg-emerald-400' },
+  'closed':      { badge: 'bg-gray-500/20 text-gray-400 border-gray-600/40',      dot: 'bg-gray-500' },
+};
+
+const priorityStyle: Record<string, { badge: string }> = {
+  'low':      { badge: 'bg-gray-500/20 text-gray-400 border-gray-600/40' },
+  'medium':   { badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
+  'high':     { badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
+  'critical': { badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
+};
+
+const categoryLabel: Record<string, string> = {
+  'it-problem':       'IT Problem',
+  'app-problem':      'App Problem',
+  'feature-request':  'Feature Request',
+  'doc-request':      'Doc Request',
+  'other':            'Other',
+};
+
+const categoryStyle: Record<string, string> = {
+  'it-problem':       'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+  'app-problem':      'bg-violet-500/20 text-violet-300 border-violet-500/40',
+  'feature-request':  'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+  'doc-request':      'bg-teal-500/20 text-teal-300 border-teal-500/40',
+  'other':            'bg-gray-500/20 text-gray-400 border-gray-600/40',
+};
+
+const defaultStatusStyle  = { badge: 'bg-gray-500/20 text-gray-400 border-gray-600/40', dot: 'bg-gray-500' };
+const defaultBadge = 'bg-gray-500/20 text-gray-400 border-gray-600/40';
+---
+
+<SiteLayout>
+  <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="max-w-3xl mx-auto px-4 py-10 md:px-6">
+
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-rose-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            Issues
+          </span>
+          <a
+            href="/issues/new"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Issue
+          </a>
+        </div>
+        <h1 class="text-4xl font-bold tracking-tight text-white">Issue Tracker</h1>
+        <p class="mt-2 text-sm text-gray-500">
+          {issues.length === 0
+            ? 'No issues yet. Submit one to get started.'
+            : `${issues.length} issue${issues.length === 1 ? '' : 's'} — newest first`}
+        </p>
+      </div>
+
+      <!-- Issue list -->
+      {issues.length === 0 ? (
+        <div class="rounded-2xl border border-dashed border-gray-800 bg-gray-900/30 px-8 py-16 text-center">
+          <svg class="w-10 h-10 text-gray-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <p class="text-gray-600 text-sm">No issues found.</p>
+          <a href="/issues/new" class="mt-4 inline-flex items-center gap-1.5 text-sm text-rose-400 hover:text-rose-300 transition-colors">
+            Submit the first issue →
+          </a>
+        </div>
+      ) : (
+        <ul class="space-y-3">
+          {issues.map(issue => {
+            const slug = issue.id.split('/').pop() ?? issue.id;
+            const ss = statusStyle[issue.data.status] ?? defaultStatusStyle;
+            const ps = issue.data.priority ? priorityStyle[issue.data.priority] : null;
+            const cs = issue.data.category ? categoryStyle[issue.data.category] : null;
+            const cLabel = issue.data.category ? categoryLabel[issue.data.category] : null;
+
+            const submitted = new Date(issue.data.date);
+            const submittedStr = submitted.toLocaleDateString('en-US', {
+              month: 'short', day: 'numeric', year: 'numeric',
+            });
+
+            return (
+              <li>
+                <a
+                  href={`/issues/${slug}`}
+                  class="block rounded-xl border border-gray-800 bg-gray-900/50 hover:border-gray-700 hover:bg-gray-900 transition-colors px-5 py-4 group"
+                >
+                  <!-- Top row: badges -->
+                  <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                    <span class={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-semibold capitalize ${ss.badge}`}>
+                      <span class={`w-1.5 h-1.5 rounded-full ${ss.dot}`}></span>
+                      {issue.data.status}
+                    </span>
+                    {ps && (
+                      <span class={`inline-flex items-center text-xs px-2 py-0.5 rounded-full border font-semibold capitalize ${ps.badge}`}>
+                        {issue.data.priority}
+                      </span>
+                    )}
+                    {cs && cLabel && (
+                      <span class={`inline-flex items-center text-xs px-2 py-0.5 rounded-full border font-semibold ${cs}`}>
+                        {cLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  <!-- Title -->
+                  <p class="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors leading-snug mb-1.5">
+                    {issue.data.title}
+                  </p>
+
+                  <!-- Description -->
+                  {issue.data.description && (
+                    <p class="text-xs text-gray-500 leading-relaxed mb-2 line-clamp-2">
+                      {issue.data.description}
+                    </p>
+                  )}
+
+                  <!-- Meta row -->
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                    <span>Submitted {submittedStr}</span>
+                    {issue.data.reporter && (
+                      <span>By {issue.data.reporter}</span>
+                    )}
+                    {issue.data.assignee && (
+                      <span>Assigned to {issue.data.assignee}</span>
+                    )}
+                    {issue.data.dueDate && (
+                      <span>Due {issue.data.dueDate}</span>
+                    )}
+                    {issue.data.tags && issue.data.tags.length > 0 && (
+                      <span class="flex items-center gap-1 flex-wrap">
+                        {issue.data.tags.map(tag => (
+                          <span class="bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded text-xs">{tag}</span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+    </div>
+  </div>
+</SiteLayout>

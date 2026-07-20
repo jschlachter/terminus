@@ -1,0 +1,349 @@
+---
+export const prerender = false;
+
+import SiteLayout from '../../layouts/Layout.astro';
+
+const today = new Date();
+const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+---
+
+<SiteLayout>
+  <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="max-w-3xl mx-auto px-4 py-10 md:px-6">
+
+      <!-- Back link -->
+      <a href="/issues" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-8 group">
+        <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to issues
+      </a>
+
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-rose-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Issue
+          </span>
+        </div>
+        <h1 class="text-4xl font-bold tracking-tight text-white">Submit an Issue</h1>
+        <p class="mt-2 text-sm text-gray-500">Describe the problem, request, or feedback below.</p>
+      </div>
+
+      <!-- Alert area -->
+      <div id="alert" class="hidden mb-6 rounded-xl border px-5 py-4 text-sm font-medium"></div>
+
+      <!-- Form card -->
+      <form id="issue-form" class="rounded-2xl border border-gray-800 bg-gray-900/50 overflow-hidden shadow-xl">
+        <!-- Accent bar -->
+        <div class="h-1 w-full bg-rose-500"></div>
+
+        <div class="p-6 md:p-8 space-y-6">
+
+          <!-- Title -->
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-300 mb-1.5">
+              Title <span class="text-red-400">*</span>
+            </label>
+            <input
+              id="title"
+              name="title"
+              type="text"
+              required
+              placeholder="e.g. Login page throws 500 on invalid credentials"
+              class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
+            />
+          </div>
+
+          <!-- Date + Status -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="date" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Date submitted <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                required
+                value={defaultDate}
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors scheme-dark"
+              />
+            </div>
+            <div>
+              <label for="status" class="block text-sm font-medium text-gray-300 mb-1.5">
+                Status <span class="text-red-400">*</span>
+              </label>
+              <select
+                id="status"
+                name="status"
+                required
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
+              >
+                <option value="open" selected>Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Priority + Category -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="priority" class="block text-sm font-medium text-gray-300 mb-1.5">Priority</label>
+              <select
+                id="priority"
+                name="priority"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
+              >
+                <option value="">— None —</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div>
+              <label for="category" class="block text-sm font-medium text-gray-300 mb-1.5">Category</label>
+              <select
+                id="category"
+                name="category"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
+              >
+                <option value="">— None —</option>
+                <option value="it-problem">IT Problem</option>
+                <option value="app-problem">App Problem</option>
+                <option value="feature-request">Feature Request</option>
+                <option value="doc-request">Doc Request</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Reporter + Assignee -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="reporter" class="block text-sm font-medium text-gray-300 mb-1.5">Reporter</label>
+              <input
+                id="reporter"
+                name="reporter"
+                type="text"
+                placeholder="Name or email"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
+              />
+            </div>
+            <div>
+              <label for="assignee" class="block text-sm font-medium text-gray-300 mb-1.5">Assignee</label>
+              <input
+                id="assignee"
+                name="assignee"
+                type="text"
+                placeholder="Name or email"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
+              />
+            </div>
+          </div>
+
+          <!-- Due date + Tags -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="dueDate" class="block text-sm font-medium text-gray-300 mb-1.5">Due date</label>
+              <input
+                id="dueDate"
+                name="dueDate"
+                type="date"
+                class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors scheme-dark"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-1.5">
+                Tags
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">comma or Enter to add</span>
+              </label>
+              <div
+                id="tags-pill-container"
+                class="flex flex-wrap items-center gap-1.5 min-h-10.5 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent transition-colors cursor-text"
+              >
+                <input
+                  id="tags-text-input"
+                  type="text"
+                  placeholder="Add a tag…"
+                  autocomplete="off"
+                  class="flex-1 min-w-25 bg-transparent outline-none text-gray-100 placeholder-gray-600 text-sm py-0.5"
+                />
+              </div>
+              <input type="hidden" id="tags" name="tags" />
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-300 mb-1.5">
+              Short description
+              <span class="ml-1.5 text-gray-600 font-normal text-xs">shown in the issue list</span>
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              rows="3"
+              placeholder="Brief one-or-two sentence summary of the issue…"
+              class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors resize-y"
+            ></textarea>
+          </div>
+
+          <!-- Divider -->
+          <div class="border-t border-gray-800"></div>
+
+          <!-- Markdown body -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="body" class="block text-sm font-medium text-gray-300">
+                Issue details
+                <span class="ml-1.5 text-gray-600 font-normal text-xs">markdown supported</span>
+              </label>
+              <span class="text-xs text-gray-600 font-mono">*.md</span>
+            </div>
+            <textarea
+              id="body"
+              name="body"
+              rows="16"
+              placeholder={"## Steps to Reproduce\n\n1. Navigate to…\n2. Click…\n3. Observe…\n\n## Expected Behaviour\n\n## Actual Behaviour\n\n## Additional Context"}
+              class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors resize-y font-mono text-sm leading-relaxed"
+            ></textarea>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center justify-between pt-2">
+            <a href="/issues" class="text-sm text-gray-500 hover:text-gray-300 transition-colors">Cancel</a>
+            <button
+              id="submit-btn"
+              type="submit"
+              class="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg id="submit-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <svg id="spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span id="submit-label">Submit Issue</span>
+            </button>
+          </div>
+
+        </div>
+      </form>
+
+    </div>
+  </div>
+</SiteLayout>
+
+<script>
+  const form = document.getElementById('issue-form') as HTMLFormElement;
+  const alertEl = document.getElementById('alert') as HTMLDivElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const submitLabel = document.getElementById('submit-label') as HTMLSpanElement;
+  const submitIcon = document.getElementById('submit-icon') as unknown as SVGElement;
+  const spinner = document.getElementById('spinner') as unknown as SVGElement;
+
+  function showAlert(message: string, type: 'error' | 'success') {
+    alertEl.textContent = message;
+    alertEl.className = type === 'error'
+      ? 'mb-6 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 px-5 py-4 text-sm font-medium'
+      : 'mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 px-5 py-4 text-sm font-medium';
+    alertEl.classList.remove('hidden');
+    alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function setLoading(loading: boolean) {
+    submitBtn.disabled = loading;
+    submitLabel.textContent = loading ? 'Submitting…' : 'Submit Issue';
+    submitIcon.classList.toggle('hidden', loading);
+    spinner.classList.toggle('hidden', !loading);
+  }
+
+  // Tag pill input
+  const tagContainer = document.getElementById('tags-pill-container') as HTMLDivElement;
+  const tagTextInput = document.getElementById('tags-text-input') as HTMLInputElement;
+  const tagHiddenInput = document.getElementById('tags') as HTMLInputElement;
+  let tags: string[] = [];
+
+  function renderTagPills() {
+    tagContainer.querySelectorAll('.tag-pill').forEach(p => p.remove());
+    tags.forEach((tag, i) => {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill inline-flex items-center gap-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full text-xs font-medium';
+      pill.appendChild(document.createTextNode(tag));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ml-0.5 leading-none text-rose-300/60 hover:text-rose-200';
+      btn.textContent = '×';
+      btn.setAttribute('aria-label', `Remove ${tag}`);
+      btn.addEventListener('click', () => { tags.splice(i, 1); renderTagPills(); syncTagHidden(); });
+      pill.appendChild(btn);
+      tagContainer.insertBefore(pill, tagTextInput);
+    });
+    tagTextInput.placeholder = tags.length === 0 ? 'Add a tag…' : '';
+  }
+
+  function syncTagHidden() {
+    tagHiddenInput.value = tags.join(', ');
+  }
+
+  function addTag(value: string) {
+    const trimmed = value.replace(/,+$/, '').trim();
+    if (trimmed && !tags.includes(trimmed)) { tags.push(trimmed); renderTagPills(); syncTagHidden(); }
+    tagTextInput.value = '';
+  }
+
+  tagContainer.addEventListener('click', () => tagTextInput.focus());
+
+  tagTextInput.addEventListener('keydown', (e) => {
+    if (e.key === ',' || e.key === 'Enter') { e.preventDefault(); addTag(tagTextInput.value); }
+    else if (e.key === 'Backspace' && tagTextInput.value === '' && tags.length > 0) {
+      tags.pop(); renderTagPills(); syncTagHidden();
+    }
+  });
+
+  tagTextInput.addEventListener('blur', () => { if (tagTextInput.value.trim()) addTag(tagTextInput.value); });
+
+  tagTextInput.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData as DataTransfer).getData('text');
+    pasted.split(',').map(s => s.trim()).filter(Boolean).forEach(p => { if (!tags.includes(p)) tags.push(p); });
+    renderTagPills(); syncTagHidden(); tagTextInput.value = '';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertEl.classList.add('hidden');
+    setLoading(true);
+
+    try {
+      const formData = new FormData(form);
+      const res = await fetch('/api/create-issue', { method: 'POST', body: formData });
+      const json = await res.json() as { success?: boolean; error?: string; slug?: string; year?: string; month?: string };
+
+      if (!res.ok || !json.success) {
+        showAlert(json.error ?? 'Something went wrong. Please try again.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      showAlert('Issue submitted! Redirecting…', 'success');
+      form.reset();
+      tags = []; renderTagPills(); syncTagHidden();
+
+      setTimeout(() => {
+        window.location.href = `/issues/${json.slug}`;
+      }, 1000);
+    } catch {
+      showAlert('Network error. Check that the dev server is running and try again.', 'error');
+      setLoading(false);
+    }
+  });
+</script>
