@@ -122,6 +122,20 @@ const editData = {
 
         <div class="flex items-center gap-2">
           <button
+            id="copy-link-btn"
+            type="button"
+            class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 border border-gray-700 hover:border-gray-600 hover:bg-gray-800/60 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg id="copy-link-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-1.102-8.555a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <svg id="copy-link-check" class="hidden w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span id="copy-link-label">Copy Link</span>
+          </button>
+          <button
             id="edit-btn"
             class="inline-flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/10 px-3 py-1.5 rounded-lg transition-colors"
           >
@@ -301,6 +315,45 @@ const editData = {
       </dialog>
 
       <script>
+        const copyLinkBtn = document.getElementById('copy-link-btn') as HTMLButtonElement | null;
+        const copyLinkIcon = document.getElementById('copy-link-icon');
+        const copyLinkCheck = document.getElementById('copy-link-check');
+        const copyLinkLabel = document.getElementById('copy-link-label');
+
+        copyLinkBtn?.addEventListener('click', async () => {
+          const url = window.location.href;
+
+          try {
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(url);
+            } else {
+              const textarea = document.createElement('textarea');
+              textarea.value = url;
+              textarea.style.position = 'fixed';
+              textarea.style.opacity = '0';
+              document.body.appendChild(textarea);
+              textarea.select();
+              document.execCommand('copy');
+              document.body.removeChild(textarea);
+            }
+
+            copyLinkIcon?.classList.add('hidden');
+            copyLinkCheck?.classList.remove('hidden');
+            if (copyLinkLabel) copyLinkLabel.textContent = 'Copied!';
+
+            setTimeout(() => {
+              copyLinkIcon?.classList.remove('hidden');
+              copyLinkCheck?.classList.add('hidden');
+              if (copyLinkLabel) copyLinkLabel.textContent = 'Copy Link';
+            }, 2000);
+          } catch {
+            if (copyLinkLabel) copyLinkLabel.textContent = 'Copy failed';
+            setTimeout(() => {
+              if (copyLinkLabel) copyLinkLabel.textContent = 'Copy Link';
+            }, 2000);
+          }
+        });
+
         const deleteBtn = document.getElementById('delete-btn') as HTMLButtonElement | null;
         const dialog = document.getElementById('delete-dialog') as HTMLDialogElement | null;
         const cancelBtn = document.getElementById('cancel-delete') as HTMLButtonElement | null;
