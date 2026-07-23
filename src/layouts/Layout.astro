@@ -13,30 +13,99 @@ const isIssues = currentPath.startsWith('/issues');
     <title>Terminus</title>
 </head>
 <body>
-  <nav class="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/90 backdrop-blur-sm">
-    <div class="max-w-3xl mx-auto px-4 md:px-6 flex items-center gap-1 h-12">
-      <a
-        href="/"
-        class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isCalendar ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'}`}
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        Calendar
-      </a>
-      <a
-        href="/issues"
-        class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isIssues ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'}`}
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        </svg>
-        Issues
-      </a>
+  <header class="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/90 backdrop-blur-sm">
+    <div class="max-w-3xl mx-auto px-4 md:px-6 h-10 flex items-center justify-end border-b border-gray-800/70">
+      <div class="relative">
+        <button
+          id="user-menu-btn"
+          type="button"
+          class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-700 bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+
+        <div
+          id="user-menu"
+          class="hidden absolute right-0 top-full mt-0.5 w-52 py-1 rounded-lg border border-gray-800 bg-gray-900 shadow-xl shadow-black/30"
+          role="menu"
+          aria-labelledby="user-menu-btn"
+        >
+          <a href="#" class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white" role="menuitem">Profile</a>
+          <a href="#" class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white" role="menuitem">Settings</a>
+          <a href="#" class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white" role="menuitem">Appearance</a>
+          <a href="#" class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white" role="menuitem">Keyboard shortcuts</a>
+          <a href="#" class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white" role="menuitem">Help &amp; feedback</a>
+          <div class="my-1 border-t border-gray-800"></div>
+          <a href="#" class="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white" role="menuitem">Sign out</a>
+        </div>
+      </div>
     </div>
-  </nav>
+
+    <nav>
+      <div class="max-w-3xl mx-auto px-4 md:px-6 flex items-center gap-1 h-12">
+        <a
+          href="/"
+          class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isCalendar ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'}`}
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Calendar
+        </a>
+        <a
+          href="/issues"
+          class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isIssues ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'}`}
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          Issues
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <script>
+    const menuButton = document.getElementById('user-menu-btn') as HTMLButtonElement | null;
+    const menu = document.getElementById('user-menu') as HTMLDivElement | null;
+
+    const closeMenu = () => {
+      menu?.classList.add('hidden');
+      menuButton?.setAttribute('aria-expanded', 'false');
+    };
+
+    menuButton?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isHidden = menu?.classList.contains('hidden') ?? true;
+      if (isHidden) {
+        menu?.classList.remove('hidden');
+        menuButton.setAttribute('aria-expanded', 'true');
+      } else {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!menu || !menuButton) return;
+      const target = event.target as Node;
+      if (!menu.contains(target) && !menuButton.contains(target)) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeMenu();
+      }
+    });
+  </script>
   <slot />
 </body>
 </html>
